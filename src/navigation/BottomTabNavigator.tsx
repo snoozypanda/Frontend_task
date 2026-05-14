@@ -21,18 +21,9 @@ const InventoryStack = createNativeStackNavigator();
 const InventoryStackNavigator: React.FC<{
   products: ReturnType<typeof useProducts>;
   transactions: ReturnType<typeof useTransactions>;
-}> = ({ products, transactions }) => {
-  const handleStockChange = useCallback(
-    async (sku: string, delta: number, type: TransactionType) => {
-      const product = products.products.find((p) => p.sku === sku);
-      if (!product) return;
-      const result = await products.updateStock(sku, delta);
-      if (result.success) {
-        await transactions.logTransaction(sku, product.name, type, Math.abs(delta));
-      }
-    },
-    [products, transactions]
-  );
+  onStockChange: (sku: string, delta: number, type: TransactionType) => void;
+}> = ({ products, transactions, onStockChange }) => {
+  // Moved to BottomTabNavigator
 
   const handleLogTransaction = useCallback(
     (sku: string, name: string, qty: number) => {
@@ -52,7 +43,7 @@ const InventoryStackNavigator: React.FC<{
             lowStockCount={products.lowStockCount}
             isLoaded={products.isLoaded}
             loading={products.loading}
-            onStockChange={handleStockChange}
+            onStockChange={onStockChange}
           />
         )}
       </InventoryStack.Screen>
@@ -73,6 +64,18 @@ const BottomTabNavigator: React.FC = () => {
   const users = useUsers();
   const products = useProducts();
   const transactions = useTransactions();
+
+  const handleStockChange = useCallback(
+    async (sku: string, delta: number, type: TransactionType) => {
+      const product = products.products.find((p) => p.sku === sku);
+      if (!product) return;
+      const result = await products.updateStock(sku, delta);
+      if (result.success) {
+        await transactions.logTransaction(sku, product.name, type, Math.abs(delta));
+      }
+    },
+    [products, transactions]
+  );
 
   return (
     <Tab.Navigator
@@ -125,11 +128,12 @@ const BottomTabNavigator: React.FC = () => {
             recentTransactions={transactions.recentTransactions}
             transactionCount={transactions.transactions.length}
             isLoaded={products.isLoaded && transactions.isLoaded}
+            onStockChange={handleStockChange}
           />
         )}
       </Tab.Screen>
       <Tab.Screen name="Inventory">
-        {() => <InventoryStackNavigator products={products} transactions={transactions} />}
+        {() => <InventoryStackNavigator products={products} transactions={transactions} onStockChange={handleStockChange} />}
       </Tab.Screen>
       <Tab.Screen name="History">
         {() => (

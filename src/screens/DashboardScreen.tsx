@@ -4,7 +4,8 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  FlatList,
+  Modal,
+  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,10 +15,13 @@ import {
   formatCurrency,
   formatNumber,
   getGreeting,
+  generateId,
 } from "../utils/formatting";
 import StockValueCard from "../components/StockValueCard";
 import StatCard from "../components/StatCard";
 import QuickActionButton from "../components/QuickActionButton";
+import QuantityStepper from "../components/QuantityStepper";
+import Toast from "../components/Toast";
 import TransactionItem from "../components/TransactionItem";
 import EmptyState from "../components/EmptyState";
 import LoadingState from "../components/LoadingState";
@@ -29,6 +33,7 @@ interface DashboardScreenProps {
   recentTransactions: Transaction[];
   transactionCount: number;
   isLoaded: boolean;
+  onStockChange: (sku: string, delta: number, type: TransactionType) => void;
 }
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({
@@ -38,8 +43,49 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
   recentTransactions,
   transactionCount,
   isLoaded,
+  onStockChange,
 }) => {
   const navigation = useNavigation<any>();
+  
+  const [quickActionType, setQuickActionType] = React.useState<"in" | "out" | null>(null);
+  const [selectedProductSku, setSelectedProductSku] = React.useState<string | null>(null);
+  const [adjustQuantity, setAdjustQuantity] = React.useState<number>(1);
+  const [toast, setToast] = React.useState<{ id: string; type: "success" | "error"; title: string; message: string } | null>(null);
+
+  const handleQuickActionClose = () => {
+    setQuickActionType(null);
+    setSelectedProductSku(null);
+    setAdjustQuantity(1);
+  };
+
+  const handleConfirmAction = () => {
+    if (!selectedProductSku) return;
+    const type = quickActionType === "in" ? TransactionType.INBOUND : TransactionType.OUTBOUND;
+    const delta = quickActionType === "in" ? adjustQuantity : -adjustQuantity;
+    
+    // Check if enough stock for outbound
+    const product = products.find(p => p.sku === selectedProductSku);
+    if (quickActionType === "out" && product && product.quantity < adjustQuantity) {
+      setToast({
+        id: generateId(),
+        type: "error",
+        title: "Insufficient Stock",
+        message: `Cannot remove ${adjustQuantity}. Only ${product.quantity} in stock.`,
+      });
+      return;
+    }
+
+    onStockChange(selectedProductSku, delta, type);
+    
+    setToast({
+      id: generateId(),
+      type: "success",
+      title: quickActionType === "in" ? "Stock Added" : "Stock Removed",
+      message: `Successfully adjusted ${product?.name}.`,
+    });
+    
+    handleQuickActionClose();
+  };
 
   const handleAddProduct = useCallback(() => {
     navigation.navigate("Inventory", { screen: "AddProduct" });
@@ -125,12 +171,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
             <QuickActionButton
               label="Stock In"
               icon="arrow-down-outline"
-              onPress={() => navigation.navigate("Inventory")}
+              onPress={() => setQuickActionType("in")}
             />
             <QuickActionButton
               label="Stock Out"
               icon="arrow-up-outline"
-              onPress={() => navigation.navigate("Inventory")}
+              onPress={() => setQuickActionType("out")}
             />
           </ScrollView>
         </View>
@@ -163,6 +209,86 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({
           )}
         </View>
       </ScrollView>
+
+      {/* Quick Action Modal */}
+      <Modal
+        visible={quickActionType !== null}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={handleQuickActionClose}
+      >
+        <View className="flex-1 justify-end bg-black/40">
+          <TouchableOpacity 
+            className="flex-1" 
+            activeOpacity={1} 
+            onPress={handleQuickActionClose} 
+          />
+          <View className="bg-white rounded-t-3xl min-h-[300px] p-5 pb-8 shadow-xl">
+            <View className="flex-row justify-between items-center mb-6">
+              <Text className="font-hanken text-xl font-bold text-on-surface">
+                {quickActionType === "in" ? "Quick Stock In" : "Quick Stock Out"}
+              </Text>
+              <TouchableOpacity onPress={handleQuickActionClose} className="w-8 h-8 bg-surface-container rounded-full items-center justify-center">
+                <Ionicons name="close" size={20} color="#464555" />
+              </TouchableOpacity>
+            </View>
+
+            {products.length === 0 ? (
+              <EmptyState 
+                icon="cube-outline" 
+                title="No Products" 
+                message="Add products to your inventory before adjusting stock." 
+              />
+            ) : (
+              <ScrollView className="max-h-[60%]" showsVerticalScrollIndicator={false}>
+                <Text className="font-inter text-xs font-semibold text-on-surface-variant tracking-widest uppercase mb-3">SELECT PRODUCT</Text>
+                {products.map(p => (
+                  <TouchableOpacity 
+                    key={p.sku}
+                    onPress={() => setSelectedProductSku(p.sku)}
+                    className={`p-4 rounded-xl mb-3 border ${selectedProductSku === p.sku ? 'border-primary bg-primary-fixed/30' : 'border-outline-variant/30 bg-surface-container-high'}`}
+                  >
+                    <View className="flex-row justify-between items-center">
+                      <View className="flex-1 pr-3">
+                        <Text className="font-inter text-xs font-semibold text-primary tracking-wider">{p.sku}</Text>
+                        <Text className="font-hanken text-base font-semibold text-on-surface" numberOfLines={1}>{p.name}</Text>
+                      </View>
+                      <View className="items-end">
+                        <Text className="font-inter text-[10px] text-on-surface-variant uppercase tracking-widest">In Stock</Text>
+                        <Text className="font-mono text-base font-bold text-on-surface">{p.quantity}</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+
+            {selectedProductSku && (
+              <View className="mt-4 border-t border-outline-variant/20 pt-4">
+                <View className="flex-row items-center justify-between mb-4">
+                  <Text className="font-inter text-sm font-semibold text-on-surface">Quantity to {quickActionType === "in" ? "Add" : "Remove"}</Text>
+                  <QuantityStepper
+                    value={adjustQuantity}
+                    onIncrement={() => setAdjustQuantity(prev => prev + 1)}
+                    onDecrement={() => setAdjustQuantity(prev => Math.max(1, prev - 1))}
+                  />
+                </View>
+
+                <TouchableOpacity 
+                  className={`h-12 rounded-xl items-center justify-center flex-row gap-2 ${quickActionType === "in" ? "bg-primary" : "bg-error"}`}
+                  onPress={handleConfirmAction}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name={quickActionType === "in" ? "arrow-down" : "arrow-up"} size={20} color="#FFFFFF" />
+                  <Text className="font-hanken text-lg font-bold text-white">Confirm {quickActionType === "in" ? "Stock In" : "Stock Out"}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
     </SafeAreaView>
   );
 };
