@@ -1,80 +1,104 @@
-# InventoryFlow 
+#  InventoryFlow - Project Architecture & Setup
 
-This document outlines the folder structure and architectural patterns used in the InventoryFlow application. The app is built with **React Native (Expo)**, **TypeScript**, and styled using **NativeWind (v4)**.
+Hey there! Welcome to the InventoryFlow codebase. 
 
-## Directory Tree
+This document is your roadmap to understanding how everything is wired together. We built this app using **React Native (Expo)**, **TypeScript**, and **NativeWind v4** (which means we get to use Tailwind CSS right in our React Native components!). 
+
+Here's everything you need to know to get up and running, and where to find things when you need to make changes.
+
+---
+
+## Getting Started (Installation & Setup)
+
+If you're setting this up for the first time, you'll need a few things installed.
+
+### 1. Prerequisites
+Make sure you have [Node.js](https://nodejs.org/) installed on your machine. You'll also need the **Expo Go** app on your physical phone, or an iOS/Android emulator set up on your computer.
+
+### 2. Install Dependencies
+Open your terminal, navigate to the `InventoryFlow` folder, and run:
+
+```bash
+# We use the --legacy-peer-deps flag to ensure smooth compatibility 
+# with some of the NativeWind v4 and Expo 54 native modules.
+npm install --legacy-peer-deps
+```
+
+### 3. Start the App
+Once everything is installed, fire up the Expo development server:
+
+```bash
+
+npx expo start
+```
+Scan the QR code that appears in your terminal with your phone's camera (iOS) or the Expo Go app (Android).
+
+---
+
+##  How We Organized the Code (Directory Tree)
+
+We kept the structure as flat and intuitive as possible. Here is a breakdown of what lives where:
 
 ```text
 InventoryFlow/
-├── App.tsx                     # Main application entry point and global providers
-├── app.json                    # Expo configuration
-├── package.json                # Dependencies and scripts
-├── tailwind.config.js          # NativeWind & design system tokens configuration
-├── babel.config.js             # Babel compiler config (NativeWind setup)
-├── metro.config.js             # Metro bundler config
-├── global.css                  # Global Tailwind CSS directives
-├── nativewind-env.d.ts         # TypeScript definitions for NativeWind
+├── App.tsx                     # The main entry point. Sets up navigation and global fonts.
+├── app.json                    # Expo config (app name, icons, splash screens, etc.)
+├── package.json                # Where all our npm packages live
+├── tailwind.config.js          # Our design system tokens (colors, spacing, fonts)
+├── babel.config.js             # Babel config (crucial for NativeWind v4 to work)
+├── metro.config.js             # Bundler config
+├── global.css                  # Global CSS imports for Tailwind
 │
-├── assets/                     # Static assets
-│   ├── fonts/                  # Custom application fonts
-│   └── images/                 # Local image assets
+├── assets/                     
+│   └── fonts/                  # Custom fonts (Inter, JetBrains Mono, Hanken Grotesk)
 │
-└── src/                        # Core application source code
-    ├── components/             # Reusable, stateless UI components
-    │   ├── EmptyState.tsx      # Fallback UI for empty lists
-    │   ├── InfoBanner.tsx      # Contextual alert/info messages
-    │   ├── LoadingState.tsx    # Loading spinners and indicators
-    │   ├── ProductCard.tsx     # Inventory item display card
-    │   ├── QuantityStepper.tsx # + / - input control
-    │   ├── QuickActionButton.tsx # Dashboard quick action buttons
-    │   ├── StatCard.tsx        # Dashboard statistic display
-    │   ├── StockValueCard.tsx  # Hero card for total portfolio value
-    │   ├── Toast.tsx           # Animated temporary notifications
-    │   ├── TransactionBadge.tsx# Status indicator for logs
-    │   └── TransactionItem.tsx # History log list item
+└── src/                        # The meat of the application!
+    ├── components/             # Reusable UI pieces (dumb components)
+    │   ├── ProductCard.tsx     # The card showing a single inventory item
+    │   ├── QuickActionButton.tsx # The little buttons on the dashboard
+    │   └── Toast.tsx           # Our custom animated pop-up notifications
+    │   └── ...                 # (And a few other UI helpers)
     │
-    ├── hooks/                  # Custom React hooks (Business Logic & State)
-    │   ├── useProducts.ts      # Product CRUD and stock adjustment logic
-    │   ├── useSimulatedApi.ts  # Wrapper to simulate network latency
-    │   ├── useTransactions.ts  # Transaction logging and pagination logic
-    │   └── useUsers.ts         # Authentication and user profile state
+    ├── hooks/                  # The brains of the operation (smart logic)
+    │   ├── useProducts.ts      # Handles adding products and updating stock levels
+    │   ├── useTransactions.ts  # Keeps track of the history log
+    │   └── useUsers.ts         # Manages the profile and "login" state
     │
-    ├── navigation/             # Routing configuration
-    │   └── BottomTabNavigator.tsx # Main tab bar and nested stack routing
+    ├── navigation/             
+    │   └── BottomTabNavigator.tsx # Wires up the tabs at the bottom of the screen
     │
-    ├── screens/                # Full-screen route components
-    │   ├── AddProductScreen.tsx# Form to register new SKUs
-    │   ├── DashboardScreen.tsx # Overview, stats, and quick actions
-    │   ├── HistoryScreen.tsx   # Transaction log with pagination
-    │   ├── InventoryScreen.tsx # Product list and management
-    │   └── ProfileScreen.tsx   # User registration and profile details
+    ├── screens/                # The actual pages you see in the app
+    │   ├── DashboardScreen.tsx # The home tab (stats and quick actions)
+    │   ├── InventoryScreen.tsx # The list of all products
+    │   ├── AddProductScreen.tsx# The form to create a new product
+    │   ├── HistoryScreen.tsx   # The log of all stock changes
+    │   └── ProfileScreen.tsx   # The user profile / registration page
     │
-    ├── types/                  # TypeScript interfaces and type definitions
-    │   └── index.ts            # Core domain models (User, Product, Transaction)
+    ├── types/                  
+    │   └── index.ts            # All our TypeScript blueprints (User, Product, etc.)
     │
-    └── utils/                  # Pure helper functions
-        ├── formatting.ts       # Currency, date, and number formatters
-        ├── storage.ts          # Typed AsyncStorage wrappers
-        └── validation.ts       # Form validation rules (Zod/Regex)
+    └── utils/                  # Helper functions that don't need React
+        ├── formatting.ts       # Formats dates, numbers, and currency
+        ├── storage.ts          # Wraps AsyncStorage to safely save data to the phone
+        └── validation.ts       # Makes sure form inputs are correct before saving
 ```
 
-## Architectural Patterns
+---
 
-### 1. Separation of Concerns
-The application strictly separates **Presentation** from **Business Logic**:
-- **Components & Screens** handle rendering UI and capturing user input. They remain as stateless as possible.
-- **Hooks (`/hooks`)** contain all complex business logic, data fetching, and state management. They expose clean APIs for the screens to consume.
-- **Utils (`/utils`)** contain pure, easily testable helper functions that do not rely on React.
+ 🏗️ Architectural Decisions
 
-### 2. Styling Strategy (NativeWind)
-We utilize **NativeWind v4**, allowing us to write standard Tailwind CSS utility classes directly on React Native components via the `className` prop. 
-- All brand colors, fonts, and spacing are tokenized inside `tailwind.config.js`.
-- This ensures consistency with the provided Figma/HTML design specifications without writing inline `StyleSheet` objects.
+If you are looking to contribute or add features, keep these core philosophies in mind:
 
-### 3. State Management & Persistence
-- State is managed locally using React's `useState` and `useEffect` within custom hooks.
-- **Data Persistence** is achieved through `@react-native-async-storage/async-storage`. The `src/utils/storage.ts` file acts as a strongly-typed adapter to ensure data integrity when saving to the device.
-- All mutating actions (saving products, adding stock) are wrapped in `useSimulatedApi.ts` to mimic real-world network conditions (loading states, promise resolution).
+### 1. Keep the UI "Dumb"
+I strictly separate our visuals from our logic. The files in `src/components/` and `src/screens/` should really only care about rendering the UI and handling button clicks. If you find yourself writing complex data-filtering logic inside a screen, it probably belongs in a custom hook inside `src/hooks/`.
 
-### 4. Navigation
-The app uses `@react-navigation/bottom-tabs` as the primary navigation structure. A nested `NativeStackNavigator` is used inside the Inventory tab to handle pushing the "Add Product" screen over the product list without losing the bottom tab context.
+### 2. Styling with NativeWind
+I am using **NativeWind v4**.so we write standard Tailwind CSS classes directly in the `className` prop. 
+*Need to change the primary brand color?* Don't hunt through the code; just update the token in `tailwind.config.js` and it will automatically apply everywhere.
+
+### 3. State & "Backend" Persistence
+Since this app doesn't have a real cloud database yet, all state is managed locally via React's `useState` and saved directly to the device using `@react-native-async-storage/async-storage`. 
+To make it feel like a real app, all saving/loading actions are routed through `useSimulatedApi.ts`, which injects a slight artificial delay. This allows us to naturally test loading spinners and asynchronous behavior!
+
+### 4. Navigation Flow
+We use `@react-navigation/bottom-tabs`. It's straightforward, but there is one trick: the `Inventory` tab actually houses a nested `NativeStackNavigator`. We do this so that when you tap the floating "+" button to add a product, the "Add Product" screen slides in *over* the inventory list, but still keeps you within the Inventory tab flow.
