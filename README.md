@@ -4,6 +4,7 @@ This document outlines the folder structure and architectural patterns used in t
 
 ## Directory Tree
 
+```text
 InventoryFlow/
 ├── App.tsx                     # Main application entry point and global providers
 ├── app.json                    # Expo configuration
